@@ -50,8 +50,51 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	h := func(pattern string, fn handler) { mux.Handle(pattern, s.wrap(fn)) }
 
+	user := s.user
+	org := s.org
+	admin := s.admin
+
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, 200, map[string]string{"status": "ok"}) })
 	h("GET /ready", s.handleReady)
+
+	h("POST /v1/auth/register", s.handleRegister)
+	h("POST /v1/auth/login", s.handleLogin)
+	h("POST /v1/auth/logout", user(s.handleLogout))
+	h("POST /v1/auth/password", user(s.handleChangePassword))
+	h("GET /v1/me", user(s.handleMe))
+	h("GET /v1/permissions", s.handlePermissionCatalogue)
+
+	h("GET /v1/orgs", user(s.handleListOrgs))
+	h("POST /v1/orgs", user(s.handleCreateOrg))
+	h("PATCH /v1/orgs/{org}", org(perms.OrgManage, s.handleRenameOrg))
+	h("GET /v1/orgs/{org}/members", org(perms.MembersView, s.handleListMembers))
+	h("POST /v1/orgs/{org}/members", org(perms.MembersManage, s.handleAddMember))
+	h("PATCH /v1/orgs/{org}/members/{user}", org(perms.MembersManage, s.handleUpdateMember))
+	h("DELETE /v1/orgs/{org}/members/{user}", org(perms.MembersManage, s.handleRemoveMember))
+	h("GET /v1/orgs/{org}/api-keys", org(perms.KeysManage, s.handleListKeys))
+	h("POST /v1/orgs/{org}/api-keys", org(perms.KeysManage, s.handleCreateKey))
+	h("DELETE /v1/orgs/{org}/api-keys/{key}", org(perms.KeysManage, s.handleRevokeKey))
+	h("GET /v1/orgs/{org}/audit", org(perms.AuditView, s.handleOrgAudit))
+
+	h("POST /v1/orgs/{org}/jobs", org(perms.JobsEnqueue, s.handleEnqueue))
+	h("GET /v1/orgs/{org}/jobs", org(perms.JobsView, s.handleListJobs))
+	h("GET /v1/orgs/{org}/jobs/{job}", org(perms.JobsView, s.handleGetJob))
+	h("GET /v1/orgs/{org}/jobs/{job}/logs", org(perms.LogsView, s.handleJobLogs))
+	h("POST /v1/orgs/{org}/jobs/{job}/cancel", org(perms.JobsCancel, s.handleCancelJob))
+	h("POST /v1/orgs/{org}/jobs/{job}/retry", org(perms.JobsRetry, s.handleRetryJob))
+	h("DELETE /v1/orgs/{org}/jobs/{job}", org(perms.JobsDelete, s.handleDeleteJob))
+	h("GET /v1/orgs/{org}/queues", org(perms.JobsView, s.handleListQueues))
+	h("POST /v1/orgs/{org}/queues/{queue}/pause", org(perms.QueuesManage, s.handlePauseQueue(true)))
+	h("POST /v1/orgs/{org}/queues/{queue}/resume", org(perms.QueuesManage, s.handlePauseQueue(false)))
+
+	h("GET /v1/admin/stats", admin(perms.PlatformRead, s.handleAdminStats))
+	h("GET /v1/admin/users", admin(perms.PlatformRead, s.handleAdminUsers))
+	h("GET /v1/admin/orgs", admin(perms.PlatformRead, s.handleAdminOrgs))
+	h("GET /v1/admin/jobs", admin(perms.PlatformRead, s.handleAdminJobs))
+	h("GET /v1/admin/workers", admin(perms.PlatformRead, s.handleAdminWorkers))
+	h("GET /v1/admin/audit", admin(perms.PlatformRead, s.handleAdminAudit))
+	h("POST /v1/admin/users/{user}/disable", admin(perms.PlatformUsersManage, s.handleAdminSetDisabled(true)))
+	h("POST /v1/admin/users/{user}/enable", admin(perms.PlatformUsersManage, s.handleAdminSetDisabled(false)))
 
 	return s.recoverer(s.requestLog(s.securityHeaders(s.crossOriginGuard(mux))))
 }

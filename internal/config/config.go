@@ -32,10 +32,10 @@ type Config struct {
 type Worker struct {
 	Concurrency  int
 	PollInterval time.Duration
-	// how long a claim can be valid without a heartbeat
-	Lease        time.Duration
-	Heartbeat    time.Duration
 	ReapInterval time.Duration
+	// how long a claim can be valid without a heartbeat
+	Lease     time.Duration
+	Heartbeat time.Duration
 	// forces a SIGTERM on an overrun job after this duration
 	ShutdownGrace time.Duration
 	// delay before first retry - should double per run attempt
@@ -63,8 +63,25 @@ func Load() (Config, error) {
 		AllowedImages: list("NALA_ALLOWED_IMAGES", "alpine:*"), // todo(@guarde): think about this list default
 		MaxJobTimeout: dur("NALA_MAX_JOB_TIMEOUT", time.Hour),
 
-		Worker:  Worker{},
-		Sandbox: Sandbox{},
+		Worker: Worker{
+			Concurrency:   integer("NALA_WORKER_CONCURRENCY", 4),
+			PollInterval:  dur("NALA_WORKER_POLL_INTERVAL", time.Second),
+			ReapInterval:  dur("NALA_WORKER_REAP_INTERVAL", 15*time.Second),
+			Lease:         dur("NALA_WORKER_LEASE", 30*time.Second),
+			Heartbeat:     dur("NALA_WORKER_HEARTBEAT", 10*time.Second),
+			ShutdownGrace: dur("NALA_WORKER_SHUTDOWN_GRACE", 30*time.Second),
+			RetryBase:     dur("NALA_WORKER_RETRY_BASE", 5*time.Second),
+		},
+
+		Sandbox: Sandbox{
+			DockerBinary: str("NALA_DOCKER_BIN", "docker"),
+			Runtime:      os.Getenv("NALA_SANDBOX_RUNTIME"),
+			Memory:       str("NALA_SANDBOX_MEMORY", "256m"),
+			CPUs:         str("NALA_SANDBOX_CPUS", "1"),
+			PidsLimit:    integer("NALA_SANDBOX_PIDS", 128),
+			TmpfsSize:    str("NALA_SANDBOX_TMPFS", "64m"),
+			User:         str("NALA_SANDBOX_USER", "65534:65534"),
+		},
 	}
 
 	if c.DatabaseURL == "" {

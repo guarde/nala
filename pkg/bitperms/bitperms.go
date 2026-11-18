@@ -21,7 +21,7 @@ func (p Perm) HasAny(any Perm) bool   { return p&any != 0 }
 func (p Perm) With(more Perm) Perm    { return p | more }
 func (p Perm) Without(less Perm) Perm { return p &^ less }
 func (p Perm) Count() int             { return bits.OnesCount64(uint64(p)) }
-func (p Perm) Int64(want Perm) int64  { return int64(p) }
+func (p Perm) Int64() int64           { return int64(p) }
 
 func FromInt64(v int64) (Perm, error) {
 	if v < 0 {

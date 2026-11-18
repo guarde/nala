@@ -17,7 +17,9 @@ import (
 	"strings"
 	"time"
 
+	"guarde.sh/nala/internal/auth"
 	"guarde.sh/nala/internal/config"
+	"guarde.sh/nala/internal/perms"
 	"guarde.sh/nala/internal/store"
 	"guarde.sh/nala/pkg/bitperms"
 )

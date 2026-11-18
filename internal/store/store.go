@@ -13,7 +13,9 @@ import (
 )
 
 var (
-	ErrorNotFound = errors.New("not found")
+	ErrNotFound  = errors.New("not found")
+	ErrConflict  = errors.New("conflict")
+	ErrLastOwner = errors.New("an organisation must keep at least one owner")
 )
 
 // sorry, there are a lot of uncomfortable looooooong lines in here for transactions
@@ -119,7 +121,7 @@ func isUniqueViolation(err error) bool {
 
 func notFound(err error) error {
 	if errors.Is(err, sql.ErrNoRows) {
-		return ErrorNotFound
+		return ErrNotFound
 	}
 	return err
 }
@@ -129,7 +131,7 @@ func affected(res sql.Result, err error) error {
 		return err
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
-		return ErrorNotFound
+		return ErrNotFound
 	}
 	return nil
 }

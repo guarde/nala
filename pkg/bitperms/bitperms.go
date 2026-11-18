@@ -17,7 +17,7 @@ type Perm uint64
 const None Perm = 0
 
 func (p Perm) Has(want Perm) bool     { return p&want == want }
-func (p Perm) HasAny(any Perm) bool   { return p&any == 0 }
+func (p Perm) HasAny(any Perm) bool   { return p&any != 0 }
 func (p Perm) With(more Perm) Perm    { return p | more }
 func (p Perm) Without(less Perm) Perm { return p &^ less }
 func (p Perm) Count() int             { return bits.OnesCount64(uint64(p)) }
@@ -51,7 +51,7 @@ func NewSet(names ...string) (*Set, error) {
 		if _, dup := s.byName[n]; dup {
 			return nil, fmt.Errorf("bitperms: duplicate permission name %q", n)
 		}
-		p := Perm(1) << uint(1)
+		p := Perm(1) << uint(i)
 		s.byName[n] = p
 		s.all |= p
 	}

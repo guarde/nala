@@ -23,6 +23,7 @@ const (
 
 	SessionPrefix = "nala_sess_"
 	APIKeyPrefix  = "nala_key_"
+	InvitePrefix  = "nala_inv_"
 )
 
 var (

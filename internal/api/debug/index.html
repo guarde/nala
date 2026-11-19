@@ -7,27 +7,74 @@
 <fieldset><legend>Account</legend>
   <input id="email" placeholder="email"> <input id="password" type="password" placeholder="password (12+ chars)">
   <button id="login">Log in</button> <button id="register">Register</button> <button id="logout">Log out</button>
+  <br>
+  <input id="invitetoken" placeholder="invite token (nala_inv_...)" size="50">
+  <button id="lookupinvite">Look up invite</button> <button id="acceptinvite">Accept invite</button>
 </fieldset>
 
 <fieldset><legend>Org</legend>
   <select id="org"></select> <button id="refresh">Refresh</button>
   <input id="orgname" placeholder="new org name"> <button id="neworg">Create org</button>
   <label><input id="auto" type="checkbox" checked> auto-refresh (2s)</label>
+  <button id="leaveorg">Leave org</button>
+  <p id="orginfo"></p>
+</fieldset>
+
+<fieldset><legend>Org settings</legend>
+  <label><input id="allownetwork" type="checkbox"> allow network</label>
+  max timeout <input id="maxtimeout" size="6">
+  max attempts <input id="maxattempts" size="3">
+  max running <input id="maxrunning" size="4">
+  max pending <input id="maxpending" size="7">
+  <button id="savesettings">Save settings</button>
 </fieldset>
 
 <fieldset><legend>Enqueue job</legend>
+  <input id="jobname" placeholder="name (optional)" size="14">
   <input id="image" value="alpine:3.20" size="14">
   <input id="command" value='["sh","-c","echo hello; sleep 2; echo done"]' size="50">
   queue <input id="queue" value="default" size="8">
   timeout <input id="timeout" value="30" size="4">
   attempts <input id="attempts" value="3" size="2">
+  <select id="network"><option value="none">no network</option><option value="egress">egress</option></select>
   <button id="enqueue">Enqueue</button>
 </fieldset>
 
+<h2>Stats</h2><pre id="stats"></pre>
 <h2>Queues</h2><div id="queues"></div>
 <h2>Jobs</h2><table border="1" cellpadding="4" id="jobs"></table>
 <h2>Logs <span id="logjob"></span></h2><pre id="logs"></pre>
+
+<h2>Images</h2><div id="images"></div>
+<h2>Hosts</h2><div id="hosts"></div>
+
+<h2>Workflows</h2>
+<input id="wfname" placeholder="workflow name" size="20">
+<button id="createwf">Create workflow</button>
+<br>
+<textarea id="wfgraph" rows="8" cols="100">{"nodes":[{"id":"build","image":"alpine:3.20","command":["sh","-c","echo build"]},{"id":"test","image":"alpine:3.20","command":["sh","-c","echo test"]},{"id":"report","image":"alpine:3.20","command":["sh","-c","echo report"]}],"edges":[{"from":"build","to":"test","on":"success"},{"from":"test","to":"report","on":"always"}]}</textarea>
+<div id="workflows"></div>
+<h3>Runs</h3><div id="runs"></div>
+<h3>Run <span id="runid"></span></h3><table border="1" cellpadding="4" id="runjobs"></table>
+
+<h2>Invites</h2>
+<input id="inviteemail" placeholder="email (optional)">
+<select id="inviterole"><option>viewer</option><option>developer</option><option>operator</option><option>owner</option></select>
+<button id="createinvite">Create invite</button>
+<div id="invites"></div>
+
 <h2>Members</h2><pre id="members"></pre>
-<h2>Admin</h2><button id="admin">Load stats + workers</button><pre id="adminout"></pre>
+
+<h2>Admin</h2>
+<button id="admin">Load stats + workers</button>
+<button id="admincatalogue">Load images + hosts</button>
+<br>
+<input id="adminimageref" placeholder="image ref" size="20"> <input id="adminimagelabel" placeholder="label" size="14">
+<button id="addimage">Add image</button>
+<input id="adminhostpattern" placeholder="host pattern" size="20"> <input id="adminhostlabel" placeholder="label" size="14">
+<button id="addhost">Add host</button>
+<div id="admincat"></div>
+<pre id="adminout"></pre>
+
 <h2>Last response</h2><pre id="out"></pre>
 <script src="/debug/app.js"></script>

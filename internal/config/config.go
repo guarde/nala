@@ -29,6 +29,7 @@ type Config struct {
 
 	Worker  Worker
 	Sandbox Sandbox
+	Egress  Egress
 }
 
 type Worker struct {
@@ -53,6 +54,12 @@ type Sandbox struct {
 	TmpfsSize    string
 	User         string
 }
+
+type Egress struct {
+	Address string
+}
+
+func (e Egress) Enabled() bool { return e.Address != "" }
 
 func Load() (Config, error) {
 	c := Config{
@@ -84,6 +91,10 @@ func Load() (Config, error) {
 			PidsLimit:    integer("NALA_SANDBOX_PIDS", 128),
 			TmpfsSize:    str("NALA_SANDBOX_TMPFS", "64m"),
 			User:         str("NALA_SANDBOX_USER", "65534:65534"),
+		},
+
+		Egress: Egress{
+			Address: os.Getenv("NALA_EGRESS_ADDR"),
 		},
 	}
 

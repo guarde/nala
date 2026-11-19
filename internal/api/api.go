@@ -52,10 +52,11 @@ func (s *Server) Handler() http.Handler {
 
 	user := s.user
 	org := s.org
+	member := s.member
 	admin := s.admin
 
-	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, 200, map[string]string{"status": "ok"}) })
-	h("GET /ready", s.handleReady)
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, 200, map[string]string{"status": "ok"}) })
+	h("GET /readyz", s.handleReady)
 
 	h("POST /v1/auth/register", s.handleRegister)
 	h("POST /v1/auth/login", s.handleLogin)
@@ -66,7 +67,32 @@ func (s *Server) Handler() http.Handler {
 
 	h("GET /v1/orgs", user(s.handleListOrgs))
 	h("POST /v1/orgs", user(s.handleCreateOrg))
+	h("GET /v1/orgs/{org}", member(s.handleGetOrg))
 	h("PATCH /v1/orgs/{org}", org(perms.OrgManage, s.handleRenameOrg))
+	h("DELETE /v1/orgs/{org}", org(perms.OrgManage, s.handleDeleteOrg))
+	h("PATCH /v1/orgs/{org}/settings", org(perms.SettingsManage, s.handleUpdateSettings))
+	h("POST /v1/orgs/{org}/leave", member(s.handleLeaveOrg))
+
+	h("GET /v1/orgs/{org}/images", member(s.handleOrgCatalogue(store.Images, "images")))
+	h("PUT /v1/orgs/{org}/images/{image}", org(perms.ImagesManage, s.handleSetOrgCatalogue(store.Images, "image.set", "image")))
+	h("GET /v1/orgs/{org}/hosts", member(s.handleOrgCatalogue(store.Hosts, "hosts")))
+	h("PUT /v1/orgs/{org}/hosts/{host}", org(perms.HostsManage, s.handleSetOrgCatalogue(store.Hosts, "host.set", "host")))
+
+	h("GET /v1/orgs/{org}/invites", org(perms.InvitesManage, s.handleListInvites))
+	h("POST /v1/orgs/{org}/invites", org(perms.InvitesManage, s.handleCreateInvite))
+	h("DELETE /v1/orgs/{org}/invites/{invite}", org(perms.InvitesManage, s.handleRevokeInvite))
+	h("POST /v1/invites/lookup", user(s.handleLookupInvite))
+	h("POST /v1/invites/accept", user(s.handleAcceptInvite))
+
+	h("GET /v1/orgs/{org}/workflows", org(perms.WorkflowsView, s.handleListWorkflows))
+	h("POST /v1/orgs/{org}/workflows", org(perms.WorkflowsManage, s.handleCreateWorkflow))
+	h("GET /v1/orgs/{org}/workflows/{workflow}", org(perms.WorkflowsView, s.handleGetWorkflow))
+	h("PUT /v1/orgs/{org}/workflows/{workflow}", org(perms.WorkflowsManage, s.handleUpdateWorkflow))
+	h("DELETE /v1/orgs/{org}/workflows/{workflow}", org(perms.WorkflowsManage, s.handleDeleteWorkflow))
+	h("POST /v1/orgs/{org}/workflows/{workflow}/run", org(perms.WorkflowsRun, s.handleRunWorkflow))
+	h("GET /v1/orgs/{org}/runs", org(perms.WorkflowsView, s.handleListRuns))
+	h("GET /v1/orgs/{org}/runs/{run}", org(perms.WorkflowsView, s.handleGetRun))
+	h("POST /v1/orgs/{org}/runs/{run}/cancel", org(perms.WorkflowsRun, s.handleCancelRun))
 	h("GET /v1/orgs/{org}/members", org(perms.MembersView, s.handleListMembers))
 	h("POST /v1/orgs/{org}/members", org(perms.MembersManage, s.handleAddMember))
 	h("PATCH /v1/orgs/{org}/members/{user}", org(perms.MembersManage, s.handleUpdateMember))
@@ -84,6 +110,7 @@ func (s *Server) Handler() http.Handler {
 	h("POST /v1/orgs/{org}/jobs/{job}/retry", org(perms.JobsRetry, s.handleRetryJob))
 	h("DELETE /v1/orgs/{org}/jobs/{job}", org(perms.JobsDelete, s.handleDeleteJob))
 	h("GET /v1/orgs/{org}/queues", org(perms.JobsView, s.handleListQueues))
+	h("GET /v1/orgs/{org}/stats", org(perms.JobsView, s.handleOrgStats))
 	h("POST /v1/orgs/{org}/queues/{queue}/pause", org(perms.QueuesManage, s.handlePauseQueue(true)))
 	h("POST /v1/orgs/{org}/queues/{queue}/resume", org(perms.QueuesManage, s.handlePauseQueue(false)))
 
@@ -95,6 +122,12 @@ func (s *Server) Handler() http.Handler {
 	h("GET /v1/admin/audit", admin(perms.PlatformRead, s.handleAdminAudit))
 	h("POST /v1/admin/users/{user}/disable", admin(perms.PlatformUsersManage, s.handleAdminSetDisabled(true)))
 	h("POST /v1/admin/users/{user}/enable", admin(perms.PlatformUsersManage, s.handleAdminSetDisabled(false)))
+	h("GET /v1/admin/images", admin(perms.PlatformRead, s.handleAdminCatalogue(store.Images, "images")))
+	h("POST /v1/admin/images", admin(perms.PlatformCatalogueManage, s.handleAdminAddImage))
+	h("PATCH /v1/admin/images/{id}", admin(perms.PlatformCatalogueManage, s.handleAdminSetCatalogue(store.Images, "image")))
+	h("GET /v1/admin/hosts", admin(perms.PlatformRead, s.handleAdminCatalogue(store.Hosts, "hosts")))
+	h("POST /v1/admin/hosts", admin(perms.PlatformCatalogueManage, s.handleAdminAddHost))
+	h("PATCH /v1/admin/hosts/{id}", admin(perms.PlatformCatalogueManage, s.handleAdminSetCatalogue(store.Hosts, "host")))
 
 	if s.cfg.DebugUI {
 		s.debugUI(mux)
@@ -283,6 +316,12 @@ func (s *Server) org(need bitperms.Perm, next handler) handler {
 	if need == bitperms.None {
 		panic("api: org route registered without a required permission")
 	}
+	return s.orgAccess(need, next)
+}
+
+func (s *Server) member(next handler) handler { return s.orgAccess(bitperms.None, next) }
+
+func (s *Server) orgAccess(need bitperms.Perm, next handler) handler {
 	return func(w http.ResponseWriter, r *http.Request) error {
 		p, err := s.authenticate(r)
 		if err != nil {

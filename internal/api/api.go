@@ -96,6 +96,10 @@ func (s *Server) Handler() http.Handler {
 	h("POST /v1/admin/users/{user}/disable", admin(perms.PlatformUsersManage, s.handleAdminSetDisabled(true)))
 	h("POST /v1/admin/users/{user}/enable", admin(perms.PlatformUsersManage, s.handleAdminSetDisabled(false)))
 
+	if s.cfg.DebugUI {
+		s.debugUI(mux)
+	}
+
 	return s.recoverer(s.requestLog(s.securityHeaders(s.crossOriginGuard(mux))))
 }
 

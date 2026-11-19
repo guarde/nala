@@ -25,6 +25,8 @@ type Config struct {
 	AllowedImages []string
 	MaxJobTimeout time.Duration
 
+	DebugUI bool
+
 	Worker  Worker
 	Sandbox Sandbox
 }
@@ -62,6 +64,7 @@ func Load() (Config, error) {
 		SessionTTL:    dur("NALA_SESSION_TTL", 7*24*time.Hour),
 		AllowedImages: list("NALA_ALLOWED_IMAGES", "alpine:*"), // todo(@guarde): think about this list default
 		MaxJobTimeout: dur("NALA_MAX_JOB_TIMEOUT", time.Hour),
+		DebugUI:       boolean("NALA_DEBUG_UI", false),
 
 		Worker: Worker{
 			Concurrency:   integer("NALA_WORKER_CONCURRENCY", 4),
